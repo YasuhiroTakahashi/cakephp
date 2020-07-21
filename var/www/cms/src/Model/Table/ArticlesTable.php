@@ -8,6 +8,11 @@ use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
 
+// Text クラス
+use Cake\Utility\Text;
+// EventInterface クラス
+use Cake\Event\EventInterface;
+
 /**
  * Articles Model
  *
@@ -31,7 +36,15 @@ use Cake\Validation\Validator;
  * @mixin \Cake\ORM\Behavior\TimestampBehavior
  */
 class ArticlesTable extends Table
-{
+{   
+    public function beforeSave(EventInterface $event, $entity, $options)
+    {
+        if ($entity->isNew() && !$entity->slug) {
+            $sluggedTitle = Text::slug($entity->title);
+            // スラグをスキーマで定義されている最大長に調整
+            $entity->slug = substr($sluggedTitle, 0, 191);
+        }
+    }
     /**
      * Initialize method
      *
@@ -68,29 +81,12 @@ class ArticlesTable extends Table
     public function validationDefault(Validator $validator): Validator
     {
         $validator
-            ->integer('id')
-            ->allowEmptyString('id', null, 'create');
+        ->notEmptyString('title')
+        ->minLength('title', 10)
+        ->maxLength('title', 255)
 
-        $validator
-            ->scalar('title')
-            ->maxLength('title', 255)
-            ->requirePresence('title', 'create')
-            ->notEmptyString('title');
-
-        $validator
-            ->scalar('slug')
-            ->maxLength('slug', 191)
-            ->requirePresence('slug', 'create')
-            ->notEmptyString('slug')
-            ->add('slug', 'unique', ['rule' => 'validateUnique', 'provider' => 'table']);
-
-        $validator
-            ->scalar('body')
-            ->allowEmptyString('body');
-
-        $validator
-            ->boolean('published')
-            ->allowEmptyString('published');
+        ->notEmptyString('body')
+        ->minLength('body', 10);
 
         return $validator;
     }
